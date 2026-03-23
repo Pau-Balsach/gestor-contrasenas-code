@@ -19,7 +19,6 @@ Próximamente disponible en la sección de lanzamientos.
 ## Requisitos
 
 - Java 25 o superior
-- Maven
 
 ## 🛠️ Compilar y ejecutar
 
