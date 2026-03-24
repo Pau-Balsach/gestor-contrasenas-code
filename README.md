@@ -38,12 +38,7 @@ La forma más sencilla de usar TrackLectura en Windows es descargando el instala
 - La clave de cifrado se deriva de tu contraseña maestra con PBKDF2 y nunca se almacena.
 - Row Level Security activado en Supabase — ningún usuario puede acceder a los datos de otro.
 - La contraseña maestra es independiente de la contraseña de login.
-- Protección básica anti brute-force en cliente (backoff y bloqueo temporal).
-
-### Verificaciones de seguridad incluidas en el repo
-
-- Script de prueba de acceso cruzado RLS: `security/rls_cross_access_test.sql`
-- Workflow SCA (OWASP Dependency-Check): `.github/workflows/security-sca.yml`
+- Protección anti brute-force en cliente (backoff y bloqueo temporal).
 
 ## Licencia
 
