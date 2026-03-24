@@ -22,26 +22,6 @@ La forma más sencilla de usar TrackLectura en Windows es descargando el instala
 
 - Java 25 o superior
 
-## 🛠️ Compilar y ejecutar
-
-Antes de compilar necesitas crear los archivos de configuración con tus propias credenciales:
-
-- `src/com/mycompany/gestorcontrasenyas/db/Conexion.java` — credenciales de Supabase PostgreSQL
-- `src/com/mycompany/gestorcontrasenyas/db/SupabaseAuth.java` — URL y ANON KEY de Supabase
-- `src/com/mycompany/gestorcontrasenyas/service/RiotService.java` — API keys de Riot Games y Henrik
-
-**Windows (PowerShell)**
-```powershell
-mvn compile
-mvn exec:java
-```
-
-**Linux / macOS**
-```bash
-mvn compile
-mvn exec:java
-```
-
 ## Tecnologías utilizadas
 
 - Java 25
