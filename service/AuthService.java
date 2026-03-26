@@ -72,11 +72,9 @@ public class AuthService {
                         return "Contraseña maestra incorrecta.";
                     }
                 }
-
                 SupabaseAuth.setMasterKey(key);
                 return null;
             }
-
         } catch (Exception e) {
             return "Error al generar la clave: " + e.getMessage();
         }
