@@ -1,0 +1,4 @@
+supabase.url=https://TU_PROYECTO.supabase.co
+supabase.anon_key=TU_ANON_KEY
+riot.api_key=TU_RIOT_API_KEY
+henrik.api_key=TU_HENRIK_KEY
