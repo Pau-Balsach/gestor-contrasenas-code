@@ -1,19 +1,41 @@
 package com.mycompany.gestorcontrasenyas.ui;
 
 import com.mycompany.gestorcontrasenyas.model.Cuenta;
+import com.mycompany.gestorcontrasenyas.service.CategoriaService;
 import com.mycompany.gestorcontrasenyas.service.CuentaService;
 import com.mycompany.gestorcontrasenyas.service.RiotService;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.*;
 
 public class ConsultarUsuario extends javax.swing.JFrame {
 
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(ConsultarUsuario.class.getName());
+    private static final int CLIPBOARD_CLEAR_SECONDS = 30;
+    private ScheduledExecutorService clipboardCleaner;
 
     public ConsultarUsuario() {
         initComponents();
         setTitle("GestorContrasenyas - Consultar Usuario");
+    }
+
+    // ----------------------------------------------------------------
+    // Carga las categorías desde Supabase y rellena el combo de filtro
+    // ----------------------------------------------------------------
+    private void cargarCategoriasFiltro() {
+        DefaultComboBoxModel<String> model = new DefaultComboBoxModel<>();
+        model.addElement("-");
+        List<String> nombres = CategoriaService.obtenerNombres();
+        for (String nombre : nombres) {
+            model.addElement(nombre);
+        }
+        cmbCategoria.setModel(model);
     }
 
     @SuppressWarnings("unchecked")
@@ -29,11 +51,13 @@ public class ConsultarUsuario extends javax.swing.JFrame {
         lblCargando = new javax.swing.JLabel();
         btnEliminar = new javax.swing.JButton();
         btnEditar = new javax.swing.JButton();
+        btnCopiar = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
 
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowOpened(java.awt.event.WindowEvent evt) {
+                cargarCategoriasFiltro();
                 cargarTabla();
             }
         });
@@ -48,7 +72,7 @@ public class ConsultarUsuario extends javax.swing.JFrame {
         lblCargando.setForeground(new java.awt.Color(150, 150, 150));
         lblCargando.setText("");
 
-        cmbCategoria.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "-", "Gmail", "Riot account", "Albion", "Otros" }));
+        cmbCategoria.setModel(new DefaultComboBoxModel<>(new String[]{"-"}));
         cmbCategoria.addActionListener(this::cmbCategoriaActionPerformed);
 
         tblUsuariosGuardados.setModel(new javax.swing.table.DefaultTableModel(
@@ -77,6 +101,13 @@ public class ConsultarUsuario extends javax.swing.JFrame {
         btnEditar.setFocusPainted(false);
         btnEditar.addActionListener(this::btnEditarActionPerformed);
 
+        btnCopiar.setFont(new java.awt.Font("Segoe UI", 0, 14));
+        btnCopiar.setText("Copiar...");
+        btnCopiar.setBackground(new java.awt.Color(32, 201, 151));
+        btnCopiar.setForeground(java.awt.Color.WHITE);
+        btnCopiar.setFocusPainted(false);
+        btnCopiar.addActionListener(this::btnCopiarActionPerformed);
+
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
@@ -92,6 +123,8 @@ public class ConsultarUsuario extends javax.swing.JFrame {
                         .addGap(18, 18, 18)
                         .addComponent(lblCargando))
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
+                        .addComponent(btnCopiar, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(12, 12, 12)
                         .addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(12, 12, 12)
                         .addComponent(btnEliminar, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)))
@@ -109,6 +142,7 @@ public class ConsultarUsuario extends javax.swing.JFrame {
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 420, Short.MAX_VALUE)
                 .addGap(12, 12, 12)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(btnCopiar, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnEditar, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(btnEliminar, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap())
@@ -159,6 +193,11 @@ public class ConsultarUsuario extends javax.swing.JFrame {
     private void cargarTabla() {
         String categoriaSeleccionada = (String) cmbCategoria.getSelectedItem();
 
+        // Determinar si la categoría filtrada es de tipo Riot para mostrar columnas extra.
+        // Se consulta el flag es_riot de la BD en lugar de comparar el nombre literal.
+        boolean filtroEsRiot = CategoriaService.obtenerCategorias().stream()
+                .anyMatch(c -> c.getNombre().equals(categoriaSeleccionada) && c.isEsRiot());
+
         DefaultTableModel tabla = new DefaultTableModel() {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -166,7 +205,7 @@ public class ConsultarUsuario extends javax.swing.JFrame {
             }
         };
 
-        if (categoriaSeleccionada.equals("Riot account")) {
+        if (filtroEsRiot) {
             tabla.setColumnIdentifiers(new String[]{"Categoria", "Usuario", "Contraseña", "Riot ID", "Rango Valorant", "Rango LoL"});
         } else {
             tabla.setColumnIdentifiers(new String[]{"Categoria", "Usuario", "Contraseña"});
@@ -189,7 +228,8 @@ public class ConsultarUsuario extends javax.swing.JFrame {
                         continue;
                     }
 
-                    if (categoriaSeleccionada.equals("Riot account")) {
+                    if (filtroEsRiot) {
+                        // Filtro explícito de categoría Riot: mostrar rangos
                         String riotId        = cuenta.getRiotId();
                         String rangoValorant = "Sin rango";
                         String rangoLol      = "Sin rango";
@@ -203,6 +243,7 @@ public class ConsultarUsuario extends javax.swing.JFrame {
                         }
                         publish(new Object[]{cuenta.getCategoria(), cuenta.getUsuario(), cuenta.getPassword(), riotId, rangoValorant, rangoLol});
                     } else {
+                        // Filtro "-" o categoría no-Riot: solo 3 columnas, sin llamadas a la API
                         publish(new Object[]{cuenta.getCategoria(), cuenta.getUsuario(), cuenta.getPassword()});
                     }
                 }
@@ -264,7 +305,8 @@ public class ConsultarUsuario extends javax.swing.JFrame {
 
         String nombreActual  = String.valueOf(tblUsuariosGuardados.getValueAt(filaSeleccionada, 1));
         String categoriaFila = String.valueOf(tblUsuariosGuardados.getValueAt(filaSeleccionada, 0));
-        boolean esRiot       = categoriaFila.equals("Riot account");
+        boolean esRiot       = CategoriaService.obtenerCategorias().stream()
+                .anyMatch(c -> c.getNombre().equals(categoriaFila) && c.isEsRiot());
 
         // Campos comunes
         JTextField     txtNuevoUsuario  = new JTextField(nombreActual);
@@ -320,34 +362,124 @@ public class ConsultarUsuario extends javax.swing.JFrame {
     
     private void tblUsuariosGuardadosMouseClicked(java.awt.event.MouseEvent evt) {
         if (evt.getClickCount() != 2) return;
+        mostrarDialogoCopiar();
+    }
 
+    private void btnCopiarActionPerformed(java.awt.event.ActionEvent evt) {
+        mostrarDialogoCopiar();
+    }
+
+    /**
+     * Abre un diálogo con botones para copiar el usuario o la contraseña
+     * de la fila seleccionada. El portapapeles se limpia automáticamente
+     * pasados CLIPBOARD_CLEAR_SECONDS segundos por seguridad.
+     */
+    private void mostrarDialogoCopiar() {
         int filaSeleccionada = tblUsuariosGuardados.getSelectedRow();
-        if (filaSeleccionada == -1) return;
+        if (filaSeleccionada == -1) {
+            JOptionPane.showMessageDialog(this, "Selecciona una cuenta primero.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
-        String usuario = String.valueOf(tblUsuariosGuardados.getValueAt(filaSeleccionada, 1));
+        String usuario  = String.valueOf(tblUsuariosGuardados.getValueAt(filaSeleccionada, 1));
         String cuentaId = CuentaService.getCuentaid(usuario);
+
         if (cuentaId == null || cuentaId.isBlank()) {
-            JOptionPane.showMessageDialog(this, "No se pudo localizar la cuenta seleccionada.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "No se pudo localizar la cuenta.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        String password = CuentaService.obtenerPasswordDescifradaPorId(cuentaId);
-        if (password == null) {
-            JOptionPane.showMessageDialog(this, "No se pudo recuperar la contraseña.", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
+        JDialog dialogo = new JDialog(this, "Copiar credenciales — " + usuario, true);
+        dialogo.setLayout(new java.awt.BorderLayout(12, 12));
+        dialogo.setResizable(false);
 
-        JOptionPane.showMessageDialog(
-                this,
-                "Contraseña de \"" + usuario + "\":\n" + password,
-                "Ver contraseña",
-                JOptionPane.INFORMATION_MESSAGE
-        );
+        JLabel lblInfo = new JLabel("<html><b>" + usuario + "</b><br><small>Elige qué quieres copiar al portapapeles.<br>"
+                + "Se borrará automáticamente en " + CLIPBOARD_CLEAR_SECONDS + " segundos.</small></html>");
+        lblInfo.setBorder(javax.swing.BorderFactory.createEmptyBorder(14, 16, 4, 16));
+        dialogo.add(lblInfo, java.awt.BorderLayout.NORTH);
+
+        JPanel panelBotones = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 14, 10));
+
+        JButton btnCopiarUsuario = new JButton("📋  Copiar usuario");
+        btnCopiarUsuario.setFont(new java.awt.Font("Segoe UI", 0, 14));
+        btnCopiarUsuario.setBackground(new java.awt.Color(13, 110, 253));
+        btnCopiarUsuario.setForeground(java.awt.Color.WHITE);
+        btnCopiarUsuario.setFocusPainted(false);
+        btnCopiarUsuario.addActionListener(e -> {
+            copiarAlPortapapeles(usuario);
+            dialogo.dispose();
+            mostrarFeedbackCopia("Usuario copiado. Se borrará en " + CLIPBOARD_CLEAR_SECONDS + "s.");
+        });
+
+        JButton btnCopiarPassword = new JButton("🔑  Copiar contraseña");
+        btnCopiarPassword.setFont(new java.awt.Font("Segoe UI", 0, 14));
+        btnCopiarPassword.setBackground(new java.awt.Color(32, 201, 151));
+        btnCopiarPassword.setForeground(java.awt.Color.WHITE);
+        btnCopiarPassword.setFocusPainted(false);
+        btnCopiarPassword.addActionListener(e -> {
+            String password = CuentaService.obtenerPasswordDescifradaPorId(cuentaId);
+            if (password == null) {
+                JOptionPane.showMessageDialog(dialogo, "No se pudo recuperar la contraseña.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            copiarAlPortapapeles(password);
+            dialogo.dispose();
+            mostrarFeedbackCopia("Contraseña copiada. Se borrará en " + CLIPBOARD_CLEAR_SECONDS + "s.");
+        });
+
+        JButton btnCerrar = new JButton("Cancelar");
+        btnCerrar.setFont(new java.awt.Font("Segoe UI", 0, 13));
+        btnCerrar.addActionListener(e -> dialogo.dispose());
+
+        panelBotones.add(btnCopiarUsuario);
+        panelBotones.add(btnCopiarPassword);
+        panelBotones.add(btnCerrar);
+        dialogo.add(panelBotones, java.awt.BorderLayout.CENTER);
+
+        dialogo.pack();
+        dialogo.setLocationRelativeTo(this);
+        dialogo.setVisible(true);
+    }
+
+    /**
+     * Copia el texto al portapapeles y programa su borrado automático.
+     */
+    private void copiarAlPortapapeles(String texto) {
+        if (clipboardCleaner != null && !clipboardCleaner.isShutdown()) {
+            clipboardCleaner.shutdownNow();
+        }
+        Toolkit.getDefaultToolkit().getSystemClipboard()
+                .setContents(new StringSelection(texto), null);
+
+        clipboardCleaner = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "clipboard-cleaner");
+            t.setDaemon(true);
+            return t;
+        });
+        clipboardCleaner.schedule(() ->
+                Toolkit.getDefaultToolkit().getSystemClipboard()
+                        .setContents(new StringSelection(""), null),
+                CLIPBOARD_CLEAR_SECONDS, TimeUnit.SECONDS);
+    }
+
+    /**
+     * Muestra un mensaje no bloqueante en el label de estado durante 3 segundos.
+     */
+    private void mostrarFeedbackCopia(String mensaje) {
+        lblCargando.setForeground(new java.awt.Color(32, 160, 110));
+        lblCargando.setText(mensaje);
+        javax.swing.Timer timer = new javax.swing.Timer(3000, e -> {
+            lblCargando.setText("");
+            lblCargando.setForeground(new java.awt.Color(150, 150, 150));
+        });
+        timer.setRepeats(false);
+        timer.start();
     }
 
     // Variables declaration - do not modify
     private javax.swing.JButton btnEliminar;
     private javax.swing.JButton btnEditar;
+    private javax.swing.JButton btnCopiar;
     private javax.swing.JComboBox<String> cmbCategoria;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
