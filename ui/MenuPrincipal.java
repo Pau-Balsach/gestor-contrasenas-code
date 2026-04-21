@@ -1,13 +1,12 @@
 package com.mycompany.gestorcontrasenyas.ui;
 
 import com.mycompany.gestorcontrasenyas.db.SupabaseAuth;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
+import java.awt.*;
+import java.awt.geom.RoundRectangle2D;
+import javax.swing.*;
+import javax.swing.border.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
 
 public class MenuPrincipal extends javax.swing.JFrame {
 
@@ -17,47 +16,45 @@ public class MenuPrincipal extends javax.swing.JFrame {
     private final AtomicBoolean cerrandoSesion = new AtomicBoolean(false);
     private ScheduledExecutorService tokenScheduler;
 
+    // ── Paleta ────────────────────────────────────────────────────────
+    private static final Color C_BG       = new Color(0xF7F8FA);
+    private static final Color C_PANEL    = Color.WHITE;
+    private static final Color C_NAVY     = new Color(0x1A2B4A);
+    private static final Color C_GOLD     = new Color(0xC8A951);
+    private static final Color C_BORDER   = new Color(0xDDE1E9);
+    private static final Color C_TEXT     = new Color(0x1A2B4A);
+    private static final Color C_MUTED    = new Color(0x7A869A);
+
     public MenuPrincipal() {
         initComponents();
         setTitle("GestorContrasenyas");
         iniciarRenovacionToken();
-
-        // Limpiar datos sensibles de memoria al cerrar la ventana
         addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override
-            public void windowClosing(java.awt.event.WindowEvent evt) {
+            @Override public void windowClosing(java.awt.event.WindowEvent evt) {
                 cerrarSesionYVolverALogin(false);
             }
-
-            @Override
-            public void windowClosed(java.awt.event.WindowEvent evt) {
+            @Override public void windowClosed(java.awt.event.WindowEvent evt) {
                 detenerRenovacionToken();
             }
         });
     }
 
     private void iniciarRenovacionToken() {
-        if (tokenScheduler != null && !tokenScheduler.isShutdown()) {
-            return;
-        }
-
+        if (tokenScheduler != null && !tokenScheduler.isShutdown()) return;
         ThreadFactory factory = r -> {
             Thread hilo = new Thread(r, "token-refresh-worker");
             hilo.setDaemon(true);
             return hilo;
         };
-
         tokenScheduler = Executors.newSingleThreadScheduledExecutor(factory);
         tokenScheduler.scheduleAtFixedRate(() -> {
-            // Si ya estamos cerrando sesión, no lanzar más renovaciones.
             if (cerrandoSesion.get()) return;
-
             String error = SupabaseAuth.renovarToken();
             if (error != null) {
                 SwingUtilities.invokeLater(() -> {
                     if (isDisplayable() && !cerrandoSesion.get()) {
-                        javax.swing.JOptionPane.showMessageDialog(this,
-                                "La sesión expiró y no pudo renovarse. Debes iniciar sesión de nuevo.");
+                        JOptionPane.showMessageDialog(this,
+                            "La sesión expiró y no pudo renovarse. Debes iniciar sesión de nuevo.");
                     }
                     cerrarSesionYVolverALogin(true);
                 });
@@ -66,122 +63,200 @@ public class MenuPrincipal extends javax.swing.JFrame {
     }
 
     private void detenerRenovacionToken() {
-        if (tokenScheduler != null) {
-            tokenScheduler.shutdownNow();
-            tokenScheduler = null;
-        }
+        if (tokenScheduler != null) { tokenScheduler.shutdownNow(); tokenScheduler = null; }
     }
 
     private void cerrarSesionYVolverALogin(boolean redirigirALogin) {
-        if (!cerrandoSesion.compareAndSet(false, true)) {
-            return;
-        }
-
+        if (!cerrandoSesion.compareAndSet(false, true)) return;
         detenerRenovacionToken();
         SupabaseAuth.cerrarSesion();
-
         if (redirigirALogin && isDisplayable()) {
             login loginPantalla = new login();
             loginPantalla.setLocationRelativeTo(null);
             loginPantalla.setVisible(true);
         }
-
-        if (isDisplayable()) {
-            dispose();
-        }
+        if (isDisplayable()) dispose();
     }
 
     @SuppressWarnings("unchecked")
     private void initComponents() {
 
-        UIManager.put("OptionPane.errorSound", null);
+        UIManager.put("OptionPane.errorSound",       null);
         UIManager.put("OptionPane.informationSound", null);
-        UIManager.put("OptionPane.questionSound", null);
-        UIManager.put("OptionPane.warningSound", null);
-        jPanel1 = new javax.swing.JPanel();
-        jLabel1 = new javax.swing.JLabel();
-        jPanel2 = new javax.swing.JPanel();
-        btnConsultarCuenta = new javax.swing.JButton();
-        btnAñadirCuenta = new javax.swing.JButton();
-        btnCerrarSesion = new javax.swing.JButton();
+        UIManager.put("OptionPane.questionSound",    null);
+        UIManager.put("OptionPane.warningSound",     null);
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        jPanel1            = new JPanel();
+        headerPanel        = new JPanel();
+        jLabel1            = new JLabel();
+        jPanel2            = new JPanel();
+        btnConsultarCuenta = new JButton();
+        btnAñadirCuenta    = new JButton();
+        btnCerrarSesion    = new JButton();
 
-        jLabel1.setFont(new java.awt.Font("Segoe UI", 0, 48));
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        // ── Layout principal ──────────────────────────────────────────
+        jPanel1.setBackground(C_BG);
+        jPanel1.setLayout(new BorderLayout());
+
+        // ── Header ────────────────────────────────────────────────────
+        headerPanel.setBackground(C_NAVY);
+        headerPanel.setPreferredSize(new Dimension(480, 110));
+        headerPanel.setLayout(new GridBagLayout());
+
+        JPanel hInner = new JPanel();
+        hInner.setOpaque(false);
+        hInner.setLayout(new BoxLayout(hInner, BoxLayout.Y_AXIS));
+
+        jLabel1.setFont(new Font("Georgia", Font.PLAIN, 26));
+        jLabel1.setForeground(Color.WHITE);
         jLabel1.setText("Gestor de contraseñas");
-        jLabel1.setFocusable(false);
+        jLabel1.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        btnConsultarCuenta.setFont(new java.awt.Font("Segoe UI", 0, 18));
-        btnConsultarCuenta.setText("Consultar cuenta");
-        btnConsultarCuenta.addActionListener(this::btnConsultarCuentaActionPerformed);
+        JSeparator goldLine = new JSeparator() {
+            @Override protected void paintComponent(Graphics g) {
+                g.setColor(C_GOLD);
+                g.fillRect(0, 0, 50, 2);
+            }
+        };
+        goldLine.setPreferredSize(new Dimension(50, 2));
+        goldLine.setMaximumSize(new Dimension(50, 2));
+        goldLine.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        btnAñadirCuenta.setFont(new java.awt.Font("Segoe UI", 0, 18));
-        btnAñadirCuenta.setText("Añadir cuenta");
+        JLabel subtitle = new JLabel("Panel de control");
+        subtitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        subtitle.setForeground(new Color(0xAEC3D8));
+        subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        hInner.add(jLabel1);
+        hInner.add(Box.createVerticalStrut(6));
+        hInner.add(goldLine);
+        hInner.add(Box.createVerticalStrut(5));
+        hInner.add(subtitle);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(0, 36, 0, 36);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        headerPanel.add(hInner, gbc);
+        jPanel1.add(headerPanel, BorderLayout.NORTH);
+
+        // ── Tarjetas de acción ────────────────────────────────────────
+        jPanel2.setBackground(C_BG);
+        jPanel2.setBorder(BorderFactory.createEmptyBorder(32, 36, 16, 36));
+        jPanel2.setLayout(new BoxLayout(jPanel2, BoxLayout.Y_AXIS));
+
+        // Sección título
+        JLabel sectionLabel = new JLabel("Acciones");
+        sectionLabel.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        sectionLabel.setForeground(C_MUTED);
+        sectionLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        sectionLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 12, 0));
+        jPanel2.add(sectionLabel);
+
+        // Botón añadir
+        styleActionCard(btnAñadirCuenta, "Añadir cuenta", "➕", "Guarda nuevas credenciales de forma segura");
         btnAñadirCuenta.addActionListener(this::btnAñadirCuentaActionPerformed);
+        jPanel2.add(btnAñadirCuenta);
+        jPanel2.add(Box.createVerticalStrut(12));
 
-        btnCerrarSesion.setFont(new java.awt.Font("Segoe UI", 0, 14));
+        // Botón consultar
+        styleActionCard(btnConsultarCuenta, "Consultar cuentas", "🔍", "Visualiza y gestiona tus credenciales guardadas");
+        btnConsultarCuenta.addActionListener(this::btnConsultarCuentaActionPerformed);
+        jPanel2.add(btnConsultarCuenta);
+
+        jPanel1.add(jPanel2, BorderLayout.CENTER);
+
+        // ── Footer con cerrar sesión ──────────────────────────────────
+        JPanel footerPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        footerPanel.setBackground(C_BG);
+        footerPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(1, 0, 0, 0, C_BORDER),
+            BorderFactory.createEmptyBorder(12, 36, 16, 36)
+        ));
+
         btnCerrarSesion.setText("Cerrar sesión");
+        btnCerrarSesion.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btnCerrarSesion.setForeground(new Color(0xDC2626));
+        btnCerrarSesion.setBorderPainted(false);
+        btnCerrarSesion.setContentAreaFilled(false);
+        btnCerrarSesion.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnCerrarSesion.setFocusPainted(false);
         btnCerrarSesion.addActionListener(this::btnCerrarSesionActionPerformed);
+        footerPanel.add(btnCerrarSesion);
+        jPanel1.add(footerPanel, BorderLayout.SOUTH);
 
-        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
-        jPanel2.setLayout(jPanel2Layout);
-        jPanel2Layout.setHorizontalGroup(
-                jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(jPanel2Layout.createSequentialGroup()
-                                .addGap(97, 97, 97)
-                                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                        .addComponent(btnAñadirCuenta, javax.swing.GroupLayout.PREFERRED_SIZE, 262, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(btnConsultarCuenta, javax.swing.GroupLayout.PREFERRED_SIZE, 262, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(btnCerrarSesion, javax.swing.GroupLayout.PREFERRED_SIZE, 262, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addContainerGap(109, Short.MAX_VALUE))
-        );
-        jPanel2Layout.setVerticalGroup(
-                jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(jPanel2Layout.createSequentialGroup()
-                                .addGap(64, 64, 64)
-                                .addComponent(btnAñadirCuenta, javax.swing.GroupLayout.PREFERRED_SIZE, 70, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 30, Short.MAX_VALUE)
-                                .addComponent(btnConsultarCuenta, javax.swing.GroupLayout.PREFERRED_SIZE, 70, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 30, Short.MAX_VALUE)
-                                .addComponent(btnCerrarSesion, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(50, 50, 50))
-        );
-
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-                jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                                .addContainerGap(142, Short.MAX_VALUE)
-                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                        .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                        .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(128, 128, 128))
-        );
-        jPanel1Layout.setVerticalGroup(
-                jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addGap(31, 31, 31)
-                                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 94, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(18, 18, 18)
-                                .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addContainerGap(53, Short.MAX_VALUE))
-        );
-
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        GroupLayout layout = new GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-        );
-        layout.setVerticalGroup(
-                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-        );
+        layout.setHorizontalGroup(layout.createParallelGroup()
+            .addComponent(jPanel1, 480, 480, 480));
+        layout.setVerticalGroup(layout.createParallelGroup()
+            .addComponent(jPanel1, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE));
 
         pack();
     }
 
+    /** Crea un botón de acción estilo "tarjeta" con icono y descripción. */
+    private void styleActionCard(JButton btn, String title, String icon, String desc) {
+        btn.setLayout(new BorderLayout(12, 0));
+        btn.setBorder(BorderFactory.createCompoundBorder(
+            new login.RoundedBorder(10, C_BORDER),
+            BorderFactory.createEmptyBorder(14, 16, 14, 16)
+        ));
+        btn.setBackground(C_PANEL);
+        btn.setOpaque(true);
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 70));
+        btn.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // Icono
+        JLabel iconLabel = new JLabel(icon);
+        iconLabel.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 20));
+        iconLabel.setOpaque(false);
+
+        // Texto
+        JPanel textPanel = new JPanel();
+        textPanel.setOpaque(false);
+        textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        titleLabel.setForeground(C_TEXT);
+        JLabel descLabel = new JLabel(desc);
+        descLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        descLabel.setForeground(C_MUTED);
+        textPanel.add(titleLabel);
+        textPanel.add(descLabel);
+
+        // Flecha
+        JLabel arrow = new JLabel("›");
+        arrow.setFont(new Font("Segoe UI", Font.PLAIN, 20));
+        arrow.setForeground(C_MUTED);
+
+        btn.add(iconLabel, BorderLayout.WEST);
+        btn.add(textPanel, BorderLayout.CENTER);
+        btn.add(arrow, BorderLayout.EAST);
+
+        btn.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseEntered(java.awt.event.MouseEvent e) {
+                btn.setBackground(new Color(0xF0F4FF));
+                btn.setBorder(BorderFactory.createCompoundBorder(
+                    new login.RoundedBorder(10, C_NAVY),
+                    BorderFactory.createEmptyBorder(14, 16, 14, 16)
+                ));
+            }
+            @Override public void mouseExited(java.awt.event.MouseEvent e) {
+                btn.setBackground(C_PANEL);
+                btn.setBorder(BorderFactory.createCompoundBorder(
+                    new login.RoundedBorder(10, C_BORDER),
+                    BorderFactory.createEmptyBorder(14, 16, 14, 16)
+                ));
+            }
+        });
+    }
+
+    // ── Acciones (sin modificar) ──────────────────────────────────────
     private void btnAñadirCuentaActionPerformed(java.awt.event.ActionEvent evt) {
         NuevoUsuario pantalla = new NuevoUsuario();
         pantalla.setLocationRelativeTo(this);
@@ -203,11 +278,7 @@ public class MenuPrincipal extends javax.swing.JFrame {
     }
 
     // Variables declaration
-    private javax.swing.JButton btnAñadirCuenta;
-    private javax.swing.JButton btnConsultarCuenta;
-    private javax.swing.JButton btnCerrarSesion;
-    private javax.swing.JLabel jLabel1;
-    private javax.swing.JPanel jPanel1;
-    private javax.swing.JPanel jPanel2;
-    // End of variables declaration
+    private JButton btnAñadirCuenta, btnConsultarCuenta, btnCerrarSesion;
+    private JLabel jLabel1;
+    private JPanel jPanel1, jPanel2, headerPanel;
 }

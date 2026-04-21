@@ -3,23 +3,27 @@ package com.mycompany.gestorcontrasenyas.ui;
 import com.mycompany.gestorcontrasenyas.model.Categoria;
 import com.mycompany.gestorcontrasenyas.service.CategoriaService;
 import com.mycompany.gestorcontrasenyas.service.CuentaService;
+import java.awt.*;
 import java.util.Arrays;
 import java.util.List;
-import javax.swing.DefaultComboBoxModel;
-import javax.swing.JCheckBox;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JTextField;
-import javax.swing.UIManager;
+import javax.swing.*;
+import javax.swing.border.*;
 
 public class NuevoUsuario extends javax.swing.JFrame {
 
     private static final java.util.logging.Logger logger =
             java.util.logging.Logger.getLogger(NuevoUsuario.class.getName());
 
-    // Categoría actualmente seleccionada, con su flag es_riot.
     private Categoria categoriaSeleccionada = null;
+
+    private static final Color C_BG      = new Color(0xF7F8FA);
+    private static final Color C_PANEL   = Color.WHITE;
+    private static final Color C_NAVY    = new Color(0x1A2B4A);
+    private static final Color C_GOLD    = new Color(0xC8A951);
+    private static final Color C_BORDER  = new Color(0xDDE1E9);
+    private static final Color C_TEXT    = new Color(0x1A2B4A);
+    private static final Color C_MUTED   = new Color(0x7A869A);
+    private static final Color C_LINK    = new Color(0x2563EB);
 
     public NuevoUsuario() {
         initComponents();
@@ -27,224 +31,263 @@ public class NuevoUsuario extends javax.swing.JFrame {
         cargarCategorias();
     }
 
-    // ----------------------------------------------------------------
-    // Carga las categorías desde Supabase y rellena el combo
-    // ----------------------------------------------------------------
     private void cargarCategorias() {
         DefaultComboBoxModel<Object> model = new DefaultComboBoxModel<>();
-        model.addElement("-");                                  // opción vacía
+        model.addElement("— Selecciona categoría —");
         List<Categoria> lista = CategoriaService.obtenerCategorias();
-        for (Categoria c : lista) {
-            model.addElement(c);                               // toString() devuelve nombre
-        }
+        for (Categoria c : lista) model.addElement(c);
         cmbCategoria.setModel(model);
         categoriaSeleccionada = null;
         actualizarVisibilidadRiotId();
     }
 
-    // ----------------------------------------------------------------
-    // Muestra/oculta el campo Riot ID según la categoría elegida
-    // ----------------------------------------------------------------
     private void actualizarVisibilidadRiotId() {
         boolean esRiot = categoriaSeleccionada != null && categoriaSeleccionada.isEsRiot();
         jLabel5.setVisible(esRiot);
         txtRiotId.setVisible(esRiot);
+        riotHintLabel.setVisible(esRiot);
+        pack();
     }
 
     @SuppressWarnings("unchecked")
     private void initComponents() {
 
-        UIManager.put("OptionPane.errorSound", null);
+        UIManager.put("OptionPane.errorSound",       null);
         UIManager.put("OptionPane.informationSound", null);
-        UIManager.put("OptionPane.questionSound", null);
-        UIManager.put("OptionPane.warningSound", null);
+        UIManager.put("OptionPane.questionSound",    null);
+        UIManager.put("OptionPane.warningSound",     null);
 
-        jPanel1       = new javax.swing.JPanel();
-        jLabel1       = new javax.swing.JLabel();
-        jPanel2       = new javax.swing.JPanel();
-        btnGuardar    = new javax.swing.JButton();
-        btnAtras      = new javax.swing.JButton();
-        btnNuevaCat   = new javax.swing.JButton();
-        jLabel2       = new javax.swing.JLabel();
-        jLabel3       = new javax.swing.JLabel();
-        jLabel4       = new javax.swing.JLabel();
-        jLabel5       = new javax.swing.JLabel();
-        txtUsuario    = new javax.swing.JTextField();
-        txtPassword   = new javax.swing.JPasswordField();
-        txtRiotId     = new javax.swing.JTextField();
-        cmbCategoria  = new javax.swing.JComboBox<>();
+        jPanel1        = new JPanel();
+        headerPanel    = new JPanel();
+        jLabel1        = new JLabel();
+        jPanel2        = new JPanel();
+        btnGuardar     = new JButton();
+        btnAtras       = new JButton();
+        btnNuevaCat    = new JButton();
+        jLabel2        = new JLabel();
+        jLabel3        = new JLabel();
+        jLabel4        = new JLabel();
+        jLabel5        = new JLabel();
+        riotHintLabel  = new JLabel();
+        txtUsuario     = new JTextField();
+        txtPassword    = new JPasswordField();
+        txtRiotId      = new JTextField();
+        cmbCategoria   = new JComboBox<>();
 
-    setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 
-        jLabel1.setFont(new java.awt.Font("Segoe UI", 0, 48));
-        jLabel1.setText("       Añadir Usuario");
-        jLabel1.setFocusable(false);
+        // ── Layout principal ──────────────────────────────────────────
+        jPanel1.setBackground(C_BG);
+        jPanel1.setLayout(new BorderLayout());
 
-        btnGuardar.setFont(new java.awt.Font("Segoe UI", 0, 18));
-        btnGuardar.setText("Guardar");
-        btnGuardar.addActionListener(this::btnGuardarActionPerformed);
+        // ── Header ────────────────────────────────────────────────────
+        headerPanel.setBackground(C_NAVY);
+        headerPanel.setPreferredSize(new Dimension(480, 80));
+        headerPanel.setLayout(new GridBagLayout());
 
-        btnAtras.setText("Atras");
-        btnAtras.addActionListener(this::btnAtrasActionPerformed);
+        JPanel hInner = new JPanel();
+        hInner.setOpaque(false);
+        hInner.setLayout(new BoxLayout(hInner, BoxLayout.Y_AXIS));
 
-        // Botón para crear una nueva categoría sin salir de esta pantalla
-        btnNuevaCat.setText("+ Nueva categoría");
-        btnNuevaCat.setFont(new java.awt.Font("Segoe UI", 0, 12));
-        btnNuevaCat.setForeground(new java.awt.Color(13, 110, 253));
-        btnNuevaCat.setBorderPainted(false);
-        btnNuevaCat.setContentAreaFilled(false);
-        btnNuevaCat.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
-        btnNuevaCat.addActionListener(this::btnNuevaCatActionPerformed);
+        jLabel1.setFont(new Font("Georgia", Font.PLAIN, 22));
+        jLabel1.setForeground(Color.WHITE);
+        jLabel1.setText("Añadir nueva cuenta");
+        jLabel1.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        jLabel2.setFont(new java.awt.Font("Segoe UI", 0, 18));
-        jLabel2.setText("Usuario:");
+        JSeparator sep = new JSeparator() {
+            @Override protected void paintComponent(Graphics g) {
+                g.setColor(C_GOLD); g.fillRect(0, 0, 40, 2);
+            }
+        };
+        sep.setPreferredSize(new Dimension(40, 2));
+        sep.setMaximumSize(new Dimension(40, 2));
+        sep.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        jLabel3.setFont(new java.awt.Font("Segoe UI", 0, 18));
-        jLabel3.setText("Contraseña:");
+        hInner.add(jLabel1);
+        hInner.add(Box.createVerticalStrut(6));
+        hInner.add(sep);
 
-        jLabel4.setFont(new java.awt.Font("Segoe UI", 0, 18));
-        jLabel4.setText("Categoria:");
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(0, 32, 0, 32);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        headerPanel.add(hInner, gbc);
+        jPanel1.add(headerPanel, BorderLayout.NORTH);
 
-        jLabel5.setFont(new java.awt.Font("Segoe UI", 0, 18));
-        jLabel5.setText("Riot ID:");
-        jLabel5.setVisible(false);
+        // ── Formulario ────────────────────────────────────────────────
+        jPanel2.setBackground(C_PANEL);
+        jPanel2.setBorder(BorderFactory.createEmptyBorder(28, 40, 24, 40));
+        jPanel2.setLayout(new GridBagLayout());
 
-        txtRiotId.setVisible(false);
-        txtRiotId.setToolTipText("Ejemplo: NombreJugador#EUW");
+        // Etiquetas
+        jLabel2.setText("Usuario");
+        jLabel3.setText("Contraseña");
+        jLabel4.setText("Categoría");
+        jLabel5.setText("Riot ID");
+        styleLabel(jLabel2); styleLabel(jLabel3); styleLabel(jLabel4); styleLabel(jLabel5);
 
-        cmbCategoria.setModel(new DefaultComboBoxModel<>(new Object[]{"-"}));
+        riotHintLabel.setText("Formato: NombreJugador#TAG");
+        riotHintLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        riotHintLabel.setForeground(C_MUTED);
+        riotHintLabel.setVisible(false);
+
+        // Campos
+        styleTextField(txtUsuario);
+        styleTextField(txtPassword);
+        txtPassword.setEchoChar('●');
+        styleTextField(txtRiotId);
+
+        // Combo
+        cmbCategoria.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        cmbCategoria.setBackground(Color.WHITE);
+        cmbCategoria.setForeground(C_TEXT);
+        cmbCategoria.setBorder(new login.RoundedBorder(6, C_BORDER));
+        cmbCategoria.setPreferredSize(new Dimension(180, 36));
         cmbCategoria.addActionListener(this::cmbCategoriaActionPerformed);
 
-        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
-        jPanel2.setLayout(jPanel2Layout);
-        jPanel2Layout.setHorizontalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel2Layout.createSequentialGroup()
-                .addGap(15, 15, 15)
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(btnAtras)
-                    .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel3)
-                            .addComponent(jLabel4)
-                            .addComponent(jLabel2)
-                            .addComponent(jLabel5))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(txtUsuario)
-                            .addComponent(txtPassword)
-                            .addComponent(txtRiotId)
-                            .addGroup(jPanel2Layout.createSequentialGroup()
-                                .addComponent(cmbCategoria, 0, 129, Short.MAX_VALUE)
-                                .addGap(6, 6, 6)
-                                .addComponent(btnNuevaCat)))))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(btnGuardar, javax.swing.GroupLayout.PREFERRED_SIZE, 152, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap())
-        );
-        jPanel2Layout.setVerticalGroup(
-            jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel2Layout.createSequentialGroup()
-                .addGap(61, 61, 61)
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel2)
-                    .addComponent(txtUsuario, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(32, 32, 32)
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel3)
-                    .addComponent(txtPassword, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addGap(37, 37, 37)
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel4)
-                    .addComponent(cmbCategoria, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(btnNuevaCat))
-                .addGap(37, 37, 37)
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel5)
-                    .addComponent(txtRiotId, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 89, Short.MAX_VALUE)
-                .addComponent(btnGuardar, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(5, 5, 5)
-                .addComponent(btnAtras, javax.swing.GroupLayout.PREFERRED_SIZE, 16, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(20, 20, 20))
-        );
+        // Botón nueva categoría
+        btnNuevaCat.setText("+ Nueva categoría");
+        btnNuevaCat.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btnNuevaCat.setForeground(C_LINK);
+        btnNuevaCat.setBorderPainted(false);
+        btnNuevaCat.setContentAreaFilled(false);
+        btnNuevaCat.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnNuevaCat.setFocusPainted(false);
+        btnNuevaCat.addActionListener(this::btnNuevaCatActionPerformed);
 
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGap(56, 56, 56)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(22, Short.MAX_VALUE))
-        );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGap(31, 31, 31)
-                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 94, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
-                .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
+        // Divider
+        JSeparator divider = new JSeparator();
+        divider.setForeground(C_BORDER);
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        // Botón guardar
+        styleButtonPrimary(btnGuardar, "Guardar cuenta");
+        btnGuardar.addActionListener(this::btnGuardarActionPerformed);
+
+        // Botón atrás
+        btnAtras.setText("← Volver");
+        btnAtras.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btnAtras.setForeground(C_MUTED);
+        btnAtras.setBorderPainted(false);
+        btnAtras.setContentAreaFilled(false);
+        btnAtras.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnAtras.setFocusPainted(false);
+        btnAtras.addActionListener(this::btnAtrasActionPerformed);
+
+        // Fila combo + nueva categoría
+        JPanel catRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        catRow.setOpaque(false);
+        catRow.add(cmbCategoria);
+        catRow.add(btnNuevaCat);
+
+        // Grid layout
+        GridBagConstraints f = new GridBagConstraints();
+        f.fill = GridBagConstraints.HORIZONTAL;
+        f.weightx = 1.0;
+        f.gridx = 0;
+
+        f.gridy = 0; f.insets = new Insets(0, 0, 5, 0); jPanel2.add(jLabel2, f);
+        f.gridy = 1; f.insets = new Insets(0, 0, 20, 0); jPanel2.add(txtUsuario, f);
+        f.gridy = 2; f.insets = new Insets(0, 0, 5, 0); jPanel2.add(jLabel3, f);
+        f.gridy = 3; f.insets = new Insets(0, 0, 20, 0); jPanel2.add(txtPassword, f);
+        f.gridy = 4; f.insets = new Insets(0, 0, 5, 0); jPanel2.add(jLabel4, f);
+        f.gridy = 5; f.insets = new Insets(0, 0, 20, 0); jPanel2.add(catRow, f);
+        f.gridy = 6; f.insets = new Insets(0, 0, 5, 0); jPanel2.add(jLabel5, f);
+        f.gridy = 7; f.insets = new Insets(0, 0, 4, 0); jPanel2.add(txtRiotId, f);
+        f.gridy = 8; f.insets = new Insets(0, 0, 16, 0); jPanel2.add(riotHintLabel, f);
+        f.gridy = 9; f.insets = new Insets(4, 0, 0, 0); jPanel2.add(divider, f);
+        f.gridy = 10; f.insets = new Insets(16, 0, 0, 0); jPanel2.add(btnGuardar, f);
+
+        jPanel1.add(jPanel2, BorderLayout.CENTER);
+
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        footer.setBackground(C_BG);
+        footer.setBorder(BorderFactory.createEmptyBorder(4, 32, 12, 0));
+        footer.add(btnAtras);
+        jPanel1.add(footer, BorderLayout.SOUTH);
+
+        GroupLayout layout = new GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-        );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-        );
+        layout.setHorizontalGroup(layout.createParallelGroup()
+            .addComponent(jPanel1, 460, 460, 460));
+        layout.setVerticalGroup(layout.createParallelGroup()
+            .addComponent(jPanel1, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE));
 
         pack();
     }
 
-    // ----------------------------------------------------------------
-    // Listener del combo: actualiza el campo es_riot
-    // ----------------------------------------------------------------
+    private void styleLabel(JLabel lbl) {
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lbl.setForeground(C_TEXT);
+    }
+
+    private void styleTextField(JComponent field) {
+        field.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        field.setForeground(C_TEXT);
+        field.setBackground(Color.WHITE);
+        field.setBorder(BorderFactory.createCompoundBorder(
+            new login.RoundedBorder(8, C_BORDER),
+            BorderFactory.createEmptyBorder(8, 11, 8, 11)
+        ));
+        field.setPreferredSize(new Dimension(360, 40));
+        field.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override public void focusGained(java.awt.event.FocusEvent e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                    new login.RoundedBorder(8, C_NAVY),
+                    BorderFactory.createEmptyBorder(8, 11, 8, 11)
+                ));
+            }
+            @Override public void focusLost(java.awt.event.FocusEvent e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                    new login.RoundedBorder(8, C_BORDER),
+                    BorderFactory.createEmptyBorder(8, 11, 8, 11)
+                ));
+            }
+        });
+    }
+
+    private void styleButtonPrimary(JButton btn, String text) {
+        btn.setText(text);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setForeground(Color.WHITE);
+        btn.setBackground(C_NAVY);
+        btn.setOpaque(true);
+        btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setPreferredSize(new Dimension(360, 42));
+        btn.setBorder(new login.RoundedBorder(8, C_NAVY));
+        btn.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseEntered(java.awt.event.MouseEvent e) { btn.setBackground(new Color(0x243D6B)); }
+            @Override public void mouseExited(java.awt.event.MouseEvent e)  { btn.setBackground(C_NAVY); }
+        });
+    }
+
+    // ── Acciones (sin modificar) ──────────────────────────────────────
     private void cmbCategoriaActionPerformed(java.awt.event.ActionEvent evt) {
-        Object seleccion = cmbCategoria.getSelectedItem();
-        categoriaSeleccionada = (seleccion instanceof Categoria) ? (Categoria) seleccion : null;
+        Object sel = cmbCategoria.getSelectedItem();
+        categoriaSeleccionada = (sel instanceof Categoria) ? (Categoria) sel : null;
         actualizarVisibilidadRiotId();
     }
 
-    // ----------------------------------------------------------------
-    // Botón "+ Nueva categoría": diálogo inline, recarga el combo
-    // ----------------------------------------------------------------
     private void btnNuevaCatActionPerformed(java.awt.event.ActionEvent evt) {
-        JTextField txtNombre  = new JTextField(16);
-        JCheckBox  chkRiot    = new JCheckBox("Es cuenta de Riot Games (activa campo Riot ID)");
-        JLabel     lblAviso   = new JLabel("<html><small>Las categorías son personales y solo las ves tú.</small></html>");
-
+        JTextField txtNombre = new JTextField(16);
+        JCheckBox chkRiot = new JCheckBox("Es cuenta de Riot Games (activa campo Riot ID)");
+        JLabel lblAviso = new JLabel("<html><small>Las categorías son personales y solo las ves tú.</small></html>");
         JPanel panel = new JPanel(new java.awt.GridLayout(0, 1, 4, 4));
         panel.add(new JLabel("Nombre de la nueva categoría:"));
         panel.add(txtNombre);
         panel.add(chkRiot);
         panel.add(lblAviso);
-
-        int opcion = JOptionPane.showConfirmDialog(
-                this, panel, "Nueva categoría",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-
+        int opcion = JOptionPane.showConfirmDialog(this, panel, "Nueva categoría",
+            JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (opcion != JOptionPane.OK_OPTION) return;
-
-        String nombre  = txtNombre.getText().trim();
+        String nombre = txtNombre.getText().trim();
         boolean esRiot = chkRiot.isSelected();
-
         String error = CategoriaService.crearCategoria(nombre, esRiot);
         if (error != null) {
             JOptionPane.showMessageDialog(this, error, "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
-
-        // Recargar el combo y seleccionar la nueva categoría automáticamente
         cargarCategorias();
         for (int i = 0; i < cmbCategoria.getItemCount(); i++) {
             Object item = cmbCategoria.getItemAt(i);
@@ -255,30 +298,22 @@ public class NuevoUsuario extends javax.swing.JFrame {
         }
     }
 
-    // ----------------------------------------------------------------
-    // Guardar cuenta
-    // ----------------------------------------------------------------
     private void btnGuardarActionPerformed(java.awt.event.ActionEvent evt) {
         String usuario  = txtUsuario.getText().trim();
         char[] pwdChars = txtPassword.getPassword();
         String riotId   = txtRiotId.getText().trim();
-
         try {
             if (categoriaSeleccionada == null || usuario.isEmpty() || pwdChars.length == 0) {
                 JOptionPane.showMessageDialog(this, "Rellena todos los campos y elige una categoría.");
                 return;
             }
-
             if (categoriaSeleccionada.isEsRiot() && riotId.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Introduce el Riot ID.");
                 return;
             }
-
             String nombreCategoria = categoriaSeleccionada.getNombre();
-            String error = CuentaService.guardarCuenta(
-                    usuario, pwdChars, nombreCategoria,
-                    categoriaSeleccionada.isEsRiot() ? riotId : null);
-
+            String error = CuentaService.guardarCuenta(usuario, pwdChars, nombreCategoria,
+                categoriaSeleccionada.isEsRiot() ? riotId : null);
             if (error != null) {
                 JOptionPane.showMessageDialog(this, error);
             } else {
@@ -290,7 +325,6 @@ public class NuevoUsuario extends javax.swing.JFrame {
                 categoriaSeleccionada = null;
                 actualizarVisibilidadRiotId();
             }
-
         } finally {
             Arrays.fill(pwdChars, '\0');
         }
@@ -301,19 +335,10 @@ public class NuevoUsuario extends javax.swing.JFrame {
     }
 
     // Variables declaration
-    private javax.swing.JButton   btnAtras;
-    private javax.swing.JButton   btnGuardar;
-    private javax.swing.JButton   btnNuevaCat;
-    private javax.swing.JComboBox<Object> cmbCategoria;
-    private javax.swing.JLabel    jLabel1;
-    private javax.swing.JLabel    jLabel2;
-    private javax.swing.JLabel    jLabel3;
-    private javax.swing.JLabel    jLabel4;
-    private javax.swing.JLabel    jLabel5;
-    private javax.swing.JPanel    jPanel1;
-    private javax.swing.JPanel    jPanel2;
-    private javax.swing.JPasswordField txtPassword;
-    private javax.swing.JTextField     txtRiotId;
-    private javax.swing.JTextField     txtUsuario;
-    // End of variables declaration
+    private JButton btnAtras, btnGuardar, btnNuevaCat;
+    private JComboBox<Object> cmbCategoria;
+    private JLabel jLabel1, jLabel2, jLabel3, jLabel4, jLabel5, riotHintLabel;
+    private JPanel jPanel1, jPanel2, headerPanel;
+    private JPasswordField txtPassword;
+    private JTextField txtRiotId, txtUsuario;
 }

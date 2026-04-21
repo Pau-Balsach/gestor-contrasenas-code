@@ -1,14 +1,25 @@
 package com.mycompany.gestorcontrasenyas.ui;
 
 import com.mycompany.gestorcontrasenyas.service.AuthService;
+import java.awt.*;
+import javax.swing.*;
+import javax.swing.border.*;
 import java.util.Arrays;
-import javax.swing.UIManager;
 
 public class MasterPassword extends javax.swing.JFrame {
 
     private final boolean esPrimeraVez;
 
-    // Protección anti brute-force en cliente
+    private static final Color C_BG        = new Color(0xF7F8FA);
+    private static final Color C_PANEL     = Color.WHITE;
+    private static final Color C_NAVY      = new Color(0x1A2B4A);
+    private static final Color C_GOLD      = new Color(0xC8A951);
+    private static final Color C_BORDER    = new Color(0xDDE1E9);
+    private static final Color C_TEXT      = new Color(0x1A2B4A);
+    private static final Color C_MUTED     = new Color(0x7A869A);
+    private static final Color C_WARN_BG   = new Color(0xFFFBEB);
+    private static final Color C_WARN_BDR  = new Color(0xF5C842);
+
     private static int intentosFallidos = 0;
     private static long bloqueoHastaMs = 0;
     private static final int MAX_INTENTOS_SIN_BLOQUEO = 5;
@@ -28,147 +39,231 @@ public class MasterPassword extends javax.swing.JFrame {
             jLabel4.setVisible(true);
             txtConfirmar.setVisible(true);
             jLabel5.setText("Esta contraseña protege tus datos. No la olvides, no se puede recuperar.");
+            jLabel5.setForeground(new Color(0x92400E));
+            warningPanel.setVisible(true);
         } else {
-            jLabel1.setText("Introduce tu contraseña maestra");
+            jLabel1.setText("Contraseña maestra");
             jLabel4.setVisible(false);
             txtConfirmar.setVisible(false);
-            jLabel5.setText("Necesitas tu contraseña maestra para acceder a tus datos.");
+            jLabel5.setText("Introduce tu contraseña maestra para acceder a tus credenciales.");
+            jLabel5.setForeground(C_MUTED);
+            warningPanel.setVisible(false);
         }
     }
 
     @SuppressWarnings("unchecked")
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">
     private void initComponents() {
-        
-        UIManager.put("OptionPane.errorSound", null);
+
+        UIManager.put("OptionPane.errorSound",       null);
         UIManager.put("OptionPane.informationSound", null);
-        UIManager.put("OptionPane.questionSound", null);
-        UIManager.put("OptionPane.warningSound", null);
-        jPanel1 = new javax.swing.JPanel();
-        jLabel1 = new javax.swing.JLabel();
-        jPanel2 = new javax.swing.JPanel();
-        jLabel2 = new javax.swing.JLabel();
-        jLabel3 = new javax.swing.JLabel();
-        jLabel4 = new javax.swing.JLabel();
-        jLabel5 = new javax.swing.JLabel();
-        txtMaster = new javax.swing.JPasswordField();
-        txtConfirmar = new javax.swing.JPasswordField();
-        btnAceptar = new javax.swing.JButton();
-        btnCancelar = new javax.swing.JButton();
+        UIManager.put("OptionPane.questionSound",    null);
+        UIManager.put("OptionPane.warningSound",     null);
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        jPanel1       = new JPanel();
+        headerPanel   = new JPanel();
+        jLabel1       = new JLabel();
+        jPanel2       = new JPanel();
+        jLabel2       = new JLabel();
+        jLabel3       = new JLabel();
+        jLabel4       = new JLabel();
+        jLabel5       = new JLabel();
+        txtMaster     = new JPasswordField();
+        txtConfirmar  = new JPasswordField();
+        btnAceptar    = new JButton();
+        btnCancelar   = new JButton();
+        warningPanel  = new JPanel();
 
-        jLabel1.setFont(new java.awt.Font("Segoe UI", 0, 32));
-        jLabel1.setText("Contraseña maestra");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        jLabel2.setFont(new java.awt.Font("Segoe UI", 0, 18));
-        jLabel2.setText("Contraseña maestra:");
+        // ── Panel principal ───────────────────────────────────────────
+        jPanel1.setBackground(C_BG);
+        jPanel1.setLayout(new BorderLayout());
 
-        jLabel3.setFont(new java.awt.Font("Segoe UI", 0, 18));
-        jLabel3.setText("Confirmar:");
+        // ── Header ────────────────────────────────────────────────────
+        headerPanel.setBackground(C_NAVY);
+        headerPanel.setPreferredSize(new Dimension(460, 80));
+        headerPanel.setLayout(new GridBagLayout());
 
-        jLabel4.setFont(new java.awt.Font("Segoe UI", 0, 18));
-        jLabel4.setText("Confirmar:");
+        JPanel headerInner = new JPanel();
+        headerInner.setOpaque(false);
+        headerInner.setLayout(new BoxLayout(headerInner, BoxLayout.Y_AXIS));
 
-        jLabel5.setFont(new java.awt.Font("Segoe UI", 0, 12));
-        jLabel5.setForeground(new java.awt.Color(150, 150, 150));
-        jLabel5.setText("");
+        JLabel lockIcon = new JLabel("🔐");
+        lockIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 20));
+        lockIcon.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        btnAceptar.setFont(new java.awt.Font("Segoe UI", 0, 18));
-        btnAceptar.setText("Aceptar");
+        jLabel1.setFont(new Font("Georgia", Font.PLAIN, 22));
+        jLabel1.setForeground(Color.WHITE);
+        jLabel1.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JSeparator sep = new JSeparator() {
+            @Override protected void paintComponent(Graphics g) {
+                g.setColor(C_GOLD);
+                g.fillRect(0, 0, 40, 2);
+            }
+        };
+        sep.setPreferredSize(new Dimension(40, 2));
+        sep.setMaximumSize(new Dimension(40, 2));
+        sep.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        headerInner.add(lockIcon);
+        headerInner.add(Box.createVerticalStrut(4));
+        headerInner.add(jLabel1);
+        headerInner.add(Box.createVerticalStrut(5));
+        headerInner.add(sep);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(0, 32, 0, 32);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        headerPanel.add(headerInner, gbc);
+        jPanel1.add(headerPanel, BorderLayout.NORTH);
+
+        // ── Formulario ────────────────────────────────────────────────
+        jPanel2.setBackground(C_PANEL);
+        jPanel2.setBorder(BorderFactory.createEmptyBorder(30, 40, 24, 40));
+        jPanel2.setLayout(new GridBagLayout());
+
+        jLabel5.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        jLabel5.setForeground(C_MUTED);
+
+        jLabel2.setText("Contraseña maestra");
+        jLabel2.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        jLabel2.setForeground(C_TEXT);
+
+        jLabel4.setText("Confirmar contraseña");
+        jLabel4.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        jLabel4.setForeground(C_TEXT);
+
+        // jLabel3 (unused visually but kept in declaration)
+        jLabel3 = new JLabel();
+
+        styleField(txtMaster);
+        styleField(txtConfirmar);
+        txtMaster.setEchoChar('●');
+        txtConfirmar.setEchoChar('●');
+
+        styleButtonPrimary(btnAceptar, "Continuar");
         btnAceptar.addActionListener(this::btnAceptarActionPerformed);
 
-        btnCancelar.setText("Cancelar");
+        btnCancelar.setText("Volver al inicio de sesión");
+        btnCancelar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btnCancelar.setForeground(new Color(0x2563EB));
+        btnCancelar.setBorderPainted(false);
+        btnCancelar.setContentAreaFilled(false);
+        btnCancelar.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnCancelar.setFocusPainted(false);
         btnCancelar.addActionListener(this::btnCancelarActionPerformed);
 
-        javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
-        jPanel2.setLayout(jPanel2Layout);
-        jPanel2Layout.setHorizontalGroup(
-                jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(jPanel2Layout.createSequentialGroup()
-                                .addGap(20, 20, 20)
-                                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                        .addComponent(jLabel5)
-                                        .addComponent(btnCancelar)
-                                        .addGroup(jPanel2Layout.createSequentialGroup()
-                                                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                                        .addComponent(jLabel4)
-                                                        .addComponent(jLabel2))
-                                                .addGap(18, 18, 18)
-                                                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                                                        .addComponent(txtMaster, javax.swing.GroupLayout.DEFAULT_SIZE, 200, Short.MAX_VALUE)
-                                                        .addComponent(txtConfirmar))))
-                                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
-                                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                .addComponent(btnAceptar, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(20, 20, 20))
-        );
-        jPanel2Layout.setVerticalGroup(
-                jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(jPanel2Layout.createSequentialGroup()
-                                .addGap(30, 30, 30)
-                                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        .addComponent(jLabel2)
-                                        .addComponent(txtMaster, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(25, 25, 25)
-                                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                        .addComponent(jLabel4)
-                                        .addComponent(txtConfirmar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addGap(15, 15, 15)
-                                .addComponent(jLabel5)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 40, Short.MAX_VALUE)
-                                .addComponent(btnAceptar, javax.swing.GroupLayout.PREFERRED_SIZE, 40, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(10, 10, 10)
-                                .addComponent(btnCancelar)
-                                .addGap(20, 20, 20))
-        );
+        // Aviso primera vez
+        warningPanel.setLayout(new BorderLayout(8, 0));
+        warningPanel.setBackground(C_WARN_BG);
+        warningPanel.setBorder(BorderFactory.createCompoundBorder(
+            new login.RoundedBorder(6, C_WARN_BDR),
+            BorderFactory.createEmptyBorder(10, 12, 10, 12)
+        ));
+        JLabel warnIcon = new JLabel("⚠");
+        warnIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 14));
+        warnIcon.setForeground(new Color(0x92400E));
+        JLabel warnText = new JLabel("<html>Esta contraseña <b>no se puede recuperar</b>. Guárdala en un lugar seguro.</html>");
+        warnText.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        warnText.setForeground(new Color(0x92400E));
+        warningPanel.add(warnIcon, BorderLayout.WEST);
+        warningPanel.add(warnText, BorderLayout.CENTER);
 
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-                jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addGap(50, 50, 50)
-                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                        .addComponent(jLabel1)
-                                        .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                .addContainerGap(50, Short.MAX_VALUE))
-        );
-        jPanel1Layout.setVerticalGroup(
-                jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addGap(30, 30, 30)
-                                .addComponent(jLabel1)
-                                .addGap(20, 20, 20)
-                                .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addContainerGap(30, Short.MAX_VALUE))
-        );
+        // Layout
+        GridBagConstraints f = new GridBagConstraints();
+        f.fill = GridBagConstraints.HORIZONTAL;
+        f.weightx = 1.0;
+        f.gridx = 0;
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        f.gridy = 0; f.insets = new Insets(0, 0, 16, 0);
+        jPanel2.add(jLabel5, f);
+
+        f.gridy = 1; f.insets = new Insets(0, 0, 6, 0);
+        jPanel2.add(jLabel2, f);
+
+        f.gridy = 2; f.insets = new Insets(0, 0, 20, 0);
+        jPanel2.add(txtMaster, f);
+
+        f.gridy = 3; f.insets = new Insets(0, 0, 6, 0);
+        jPanel2.add(jLabel4, f);
+
+        f.gridy = 4; f.insets = new Insets(0, 0, 20, 0);
+        jPanel2.add(txtConfirmar, f);
+
+        f.gridy = 5; f.insets = new Insets(0, 0, 20, 0);
+        jPanel2.add(warningPanel, f);
+
+        f.gridy = 6; f.insets = new Insets(0, 0, 12, 0);
+        jPanel2.add(btnAceptar, f);
+
+        jPanel1.add(jPanel2, BorderLayout.CENTER);
+
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        footer.setBackground(C_BG);
+        footer.setBorder(BorderFactory.createEmptyBorder(8, 0, 12, 0));
+        footer.add(btnCancelar);
+        jPanel1.add(footer, BorderLayout.SOUTH);
+
+        GroupLayout layout = new GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-        );
-        layout.setVerticalGroup(
-                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-        );
+        layout.setHorizontalGroup(layout.createParallelGroup()
+            .addComponent(jPanel1, 460, 460, 460));
+        layout.setVerticalGroup(layout.createParallelGroup()
+            .addComponent(jPanel1, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE));
 
         pack();
-    }// </editor-fold>
+    }
 
+    private void styleField(JPasswordField field) {
+        field.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        field.setForeground(C_TEXT);
+        field.setBackground(Color.WHITE);
+        field.setBorder(BorderFactory.createCompoundBorder(
+            new login.RoundedBorder(8, C_BORDER),
+            BorderFactory.createEmptyBorder(9, 12, 9, 12)
+        ));
+        field.setPreferredSize(new Dimension(300, 42));
+        field.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override public void focusGained(java.awt.event.FocusEvent e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                    new login.RoundedBorder(8, C_NAVY),
+                    BorderFactory.createEmptyBorder(9, 12, 9, 12)
+                ));
+            }
+            @Override public void focusLost(java.awt.event.FocusEvent e) {
+                field.setBorder(BorderFactory.createCompoundBorder(
+                    new login.RoundedBorder(8, C_BORDER),
+                    BorderFactory.createEmptyBorder(9, 12, 9, 12)
+                ));
+            }
+        });
+    }
+
+    private void styleButtonPrimary(JButton btn, String text) {
+        btn.setText(text);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setForeground(Color.WHITE);
+        btn.setBackground(C_NAVY);
+        btn.setOpaque(true);
+        btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setPreferredSize(new Dimension(300, 44));
+        btn.setBorder(new login.RoundedBorder(8, C_NAVY));
+        btn.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseEntered(java.awt.event.MouseEvent e) { btn.setBackground(new Color(0x243D6B)); }
+            @Override public void mouseExited(java.awt.event.MouseEvent e)  { btn.setBackground(C_NAVY); }
+        });
+    }
+
+    // ── Lógica sin modificar ──────────────────────────────────────────
     private static boolean isBlank(char[] chars) {
-        for (char c : chars) {
-            if (!Character.isWhitespace(c)) return false;
-        }
+        for (char c : chars) if (!Character.isWhitespace(c)) return false;
         return true;
     }
-
-    private static boolean equalsChars(char[] a, char[] b) {
-        return Arrays.equals(a, b);
-    }
+    private static boolean equalsChars(char[] a, char[] b) { return Arrays.equals(a, b); }
 
     private static long calcularBackoffMs(int intentos) {
         int exceso = Math.max(0, intentos - MAX_INTENTOS_SIN_BLOQUEO);
@@ -185,9 +280,7 @@ public class MasterPassword extends javax.swing.JFrame {
     private void registrarFallo() {
         intentosFallidos++;
         long backoff = calcularBackoffMs(intentosFallidos);
-        if (backoff > 0) {
-            bloqueoHastaMs = System.currentTimeMillis() + backoff;
-        }
+        if (backoff > 0) bloqueoHastaMs = System.currentTimeMillis() + backoff;
     }
 
     private void reiniciarProteccionBruteforce() {
@@ -196,47 +289,41 @@ public class MasterPassword extends javax.swing.JFrame {
     }
 
     private void btnAceptarActionPerformed(java.awt.event.ActionEvent evt) {
-        char[] masterChars = txtMaster.getPassword();
+        char[] masterChars    = txtMaster.getPassword();
         char[] confirmarChars = txtConfirmar.getPassword();
-
         try {
             long ahora = System.currentTimeMillis();
             if (bloqueoHastaMs > ahora) {
                 long restante = bloqueoHastaMs - ahora;
-                javax.swing.JOptionPane.showMessageDialog(this,
-                        "Demasiados intentos. Espera " + tiempoRestante(restante) + " antes de reintentar.");
+                JOptionPane.showMessageDialog(this,
+                    "Demasiados intentos. Espera " + tiempoRestante(restante) + " antes de reintentar.");
                 return;
             }
-
             if (masterChars.length == 0 || isBlank(masterChars)) {
-                javax.swing.JOptionPane.showMessageDialog(this, "Introduce la contraseña maestra.");
+                JOptionPane.showMessageDialog(this, "Introduce la contraseña maestra.");
                 return;
             }
-
             if (esPrimeraVez) {
                 if (!equalsChars(masterChars, confirmarChars)) {
-                    javax.swing.JOptionPane.showMessageDialog(this, "Las contraseñas no coinciden.");
+                    JOptionPane.showMessageDialog(this, "Las contraseñas no coinciden.");
                     return;
                 }
                 if (masterChars.length < 8) {
-                    javax.swing.JOptionPane.showMessageDialog(this, "La contraseña maestra debe tener al menos 8 caracteres.");
+                    JOptionPane.showMessageDialog(this, "La contraseña maestra debe tener al menos 8 caracteres.");
                     return;
                 }
             }
-
             String error = AuthService.configurarMasterKey(masterChars);
             if (error != null) {
                 registrarFallo();
-                javax.swing.JOptionPane.showMessageDialog(this, error);
+                JOptionPane.showMessageDialog(this, error);
                 return;
             }
-
             reiniciarProteccionBruteforce();
             MenuPrincipal principal = new MenuPrincipal();
             principal.setLocationRelativeTo(null);
             principal.setVisible(true);
             dispose();
-
         } finally {
             Arrays.fill(masterChars, '\0');
             Arrays.fill(confirmarChars, '\0');
@@ -247,22 +334,14 @@ public class MasterPassword extends javax.swing.JFrame {
 
     private void btnCancelarActionPerformed(java.awt.event.ActionEvent evt) {
         dispose();
-        login login = new login();
-        login.setLocationRelativeTo(null);
-        login.setVisible(true);
+        login loginScreen = new login();
+        loginScreen.setLocationRelativeTo(null);
+        loginScreen.setVisible(true);
     }
 
-    // Variables declaration - do not modify
-    private javax.swing.JButton btnAceptar;
-    private javax.swing.JButton btnCancelar;
-    private javax.swing.JLabel jLabel1;
-    private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel3;
-    private javax.swing.JLabel jLabel4;
-    private javax.swing.JLabel jLabel5;
-    private javax.swing.JPanel jPanel1;
-    private javax.swing.JPanel jPanel2;
-    private javax.swing.JPasswordField txtConfirmar;
-    private javax.swing.JPasswordField txtMaster;
-    // End of variables declaration
+    // Variables declaration
+    private JButton btnAceptar, btnCancelar;
+    private JLabel jLabel1, jLabel2, jLabel3, jLabel4, jLabel5;
+    private JPanel jPanel1, jPanel2, headerPanel, warningPanel;
+    private JPasswordField txtConfirmar, txtMaster;
 }
