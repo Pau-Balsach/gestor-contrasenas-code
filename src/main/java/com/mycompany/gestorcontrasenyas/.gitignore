@@ -1,0 +1,5 @@
+dist/
+release/
+target/
+config.properties
+README.md
