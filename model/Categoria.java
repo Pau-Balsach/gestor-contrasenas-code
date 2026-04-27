@@ -16,7 +16,6 @@ public class Categoria {
     public String  getNombre() { return nombre; }
     public boolean isEsRiot()  { return esRiot; }
 
-    /** El combo muestra solo el nombre. */
     @Override
     public String toString() { return nombre; }
 }

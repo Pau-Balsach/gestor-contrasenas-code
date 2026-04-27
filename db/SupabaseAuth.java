@@ -4,22 +4,31 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mycompany.gestorcontrasenyas.utils.Config;
+import com.mycompany.gestorcontrasenyas.utils.HttpGateway;
 import com.mycompany.gestorcontrasenyas.utils.Sesion;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.Arrays;
 
 public class SupabaseAuth {
 
-    private static final String URL      = Config.get("supabase.url");
+    private static final String URL = Config.get("supabase.url");
     private static final String ANON_KEY = Config.get("supabase.anon_key");
     private static final long TOKEN_BUFFER_RENOVACION_SEC = 120L;
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(15);
+    private static final HttpClient CLIENT = HttpGateway.client();
 
     private static Sesion sesionActual = null;
 
     public static synchronized void setMasterKey(byte[] key) {
-        if (sesionActual != null) sesionActual.setMasterKey(key);
+        if (sesionActual != null) {
+            sesionActual.setMasterKey(key);
+        }
     }
 
     public static synchronized byte[] getMasterKey() {
@@ -46,23 +55,20 @@ public class SupabaseAuth {
     }
 
     public static String login(String email, char[] passwordChars) {
-        String password = null;
         try {
             JsonObject obj = new JsonObject();
             obj.addProperty("email", email);
-            password = new String(passwordChars);
-            obj.addProperty("password", password);
+            obj.addProperty("password", new String(passwordChars));
 
-            HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(URL + "/auth/v1/token?grant_type=password"))
+                    .timeout(REQUEST_TIMEOUT)
                     .header("Content-Type", "application/json")
                     .header("apikey", ANON_KEY)
                     .POST(HttpRequest.BodyPublishers.ofString(obj.toString()))
                     .build();
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
+            HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() == 200) {
                 JsonObject json = JsonParser.parseString(response.body()).getAsJsonObject();
                 String accessToken = json.get("access_token").getAsString();
@@ -76,18 +82,20 @@ public class SupabaseAuth {
                 String userId = json.getAsJsonObject("user").get("id").getAsString();
 
                 synchronized (SupabaseAuth.class) {
-                    if (sesionActual != null) sesionActual.destruir();
+                    if (sesionActual != null) {
+                        sesionActual.destruir();
+                    }
                     sesionActual = new Sesion(userId, accessToken, refreshToken, expiraEnEpochSec);
                 }
                 return null;
-            } else {
-                return "Email o contraseña incorrectos.";
             }
-
+            return "Email o contraseña incorrectos.";
         } catch (Exception e) {
-            return "Error de conexión: " + e.getMessage();
+            return "Error de conexión.";
         } finally {
-            password = null;
+            if (passwordChars != null) {
+                Arrays.fill(passwordChars, '\0');
+            }
         }
     }
 
@@ -105,15 +113,15 @@ public class SupabaseAuth {
             JsonObject obj = new JsonObject();
             obj.addProperty("refresh_token", sesion.getRefreshToken());
 
-            HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(URL + "/auth/v1/token?grant_type=refresh_token"))
+                    .timeout(REQUEST_TIMEOUT)
                     .header("Content-Type", "application/json")
                     .header("apikey", ANON_KEY)
                     .POST(HttpRequest.BodyPublishers.ofString(obj.toString()))
                     .build();
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() == 200) {
                 JsonObject json = JsonParser.parseString(response.body()).getAsJsonObject();
                 String accessToken = json.get("access_token").getAsString();
@@ -127,10 +135,9 @@ public class SupabaseAuth {
                 sesion.actualizarTokens(accessToken, refreshToken, expiraEnEpochSec);
                 return null;
             }
-            return "No se pudo renovar token: " + response.body();
-
+            return "No se pudo renovar token.";
         } catch (Exception e) {
-            return "Error al renovar token: " + e.getMessage();
+            return "Error al renovar token.";
         }
     }
 
@@ -140,7 +147,9 @@ public class SupabaseAuth {
             sesion = sesionActual;
         }
 
-        if (sesion == null) return "No hay sesión activa.";
+        if (sesion == null) {
+            return "No hay sesión activa.";
+        }
 
         long ahora = System.currentTimeMillis() / 1000L;
         if (sesion.getAccessTokenExpiraEnEpochSec() - ahora <= TOKEN_BUFFER_RENOVACION_SEC) {
@@ -150,37 +159,36 @@ public class SupabaseAuth {
     }
 
     public static String signup(String email, char[] passwordChars) {
-        String password = null;
         try {
             JsonObject obj = new JsonObject();
             obj.addProperty("email", email);
-            password = new String(passwordChars);
-            obj.addProperty("password", password);
+            obj.addProperty("password", new String(passwordChars));
 
-            HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(URL + "/auth/v1/signup"))
+                    .timeout(REQUEST_TIMEOUT)
                     .header("Content-Type", "application/json")
                     .header("apikey", ANON_KEY)
                     .POST(HttpRequest.BodyPublishers.ofString(obj.toString()))
                     .build();
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
+            HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() == 200 || response.statusCode() == 201) {
                 return null;
-            } else if (response.body().contains("weak_password")) {
-                return "La contraseña debe tener al menos 6 caracteres.";
-            } else if (response.body().contains("already registered")) {
-                return "El email ya está en uso.";
-            } else {
-                return "Error al registrarse: " + response.body();
             }
-
+            if (response.body().contains("weak_password")) {
+                return "La contraseña debe tener al menos 6 caracteres.";
+            }
+            if (response.body().contains("already registered")) {
+                return "El email ya está en uso.";
+            }
+            return "Error al registrarse.";
         } catch (Exception e) {
-            return "Error de conexión: " + e.getMessage();
+            return "Error de conexión.";
         } finally {
-            password = null;
+            if (passwordChars != null) {
+                Arrays.fill(passwordChars, '\0');
+            }
         }
     }
 
@@ -191,45 +199,46 @@ public class SupabaseAuth {
             obj.addProperty("salt", salt);
             obj.addProperty("verificador", verificador);
 
-            HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(URL + "/rest/v1/usuarios"))
+                    .timeout(REQUEST_TIMEOUT)
                     .header("Content-Type", "application/json")
                     .header("apikey", ANON_KEY)
                     .header("Authorization", "Bearer " + getAccessToken())
                     .POST(HttpRequest.BodyPublishers.ofString(obj.toString()))
                     .build();
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() == 201) return null;
-            return "Error al guardar usuario: " + response.body();
-
+            HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 201) {
+                return null;
+            }
+            return "Error al guardar usuario.";
         } catch (Exception e) {
-            return "Error de conexión: " + e.getMessage();
+            return "Error de conexión.";
         }
     }
 
     public static JsonObject obtenerDatosUsuario(String userId) {
         try {
-            HttpClient client = HttpClient.newHttpClient();
+            String userIdEnc = URLEncoder.encode(userId, StandardCharsets.UTF_8);
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(URL + "/rest/v1/usuarios?id=eq." + userId + "&select=salt,verificador"))
+                    .uri(URI.create(URL + "/rest/v1/usuarios?id=eq." + userIdEnc + "&select=salt,verificador"))
+                    .timeout(REQUEST_TIMEOUT)
                     .header("apikey", ANON_KEY)
                     .header("Authorization", "Bearer " + getAccessToken())
                     .GET()
                     .build();
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
+            HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() == 200) {
                 String body = response.body();
-                if (body.equals("[]")) return null;
+                if (body.equals("[]")) {
+                    return null;
+                }
                 JsonArray array = JsonParser.parseString(body).getAsJsonArray();
                 return array.get(0).getAsJsonObject();
             }
             return null;
-
         } catch (Exception e) {
             return null;
         }
@@ -237,7 +246,9 @@ public class SupabaseAuth {
 
     public static String obtenerSalt(String userId) {
         JsonObject datos = obtenerDatosUsuario(userId);
-        if (datos == null) return null;
+        if (datos == null) {
+            return null;
+        }
         return datos.has("salt") && !datos.get("salt").isJsonNull()
                 ? datos.get("salt").getAsString()
                 : null;

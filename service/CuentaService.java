@@ -8,63 +8,81 @@ import com.mycompany.gestorcontrasenyas.db.SupabaseAuth;
 import com.mycompany.gestorcontrasenyas.model.Cuenta;
 import com.mycompany.gestorcontrasenyas.utils.Config;
 import com.mycompany.gestorcontrasenyas.utils.Encriptacion;
+import com.mycompany.gestorcontrasenyas.utils.HttpGateway;
 import java.net.URI;
-import java.util.Arrays;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class CuentaService {
 
-    private static final String URL      = Config.get("supabase.url") + "/rest/v1";
+    private static final String URL = Config.get("supabase.url") + "/rest/v1";
     private static final String ANON_KEY = Config.get("supabase.anon_key");
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(15);
+    private static final HttpClient CLIENT = HttpGateway.client();
+    private static final Pattern UUID_PATTERN = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$");
 
     private static String validarSesion() {
-        if (!SupabaseAuth.haySesionActiva()) return "No hay sesión activa.";
+        if (!SupabaseAuth.haySesionActiva()) {
+            return "No hay sesión activa.";
+        }
         return SupabaseAuth.asegurarTokenVigente();
+    }
+
+    private static boolean isUuid(String value) {
+        return value != null && UUID_PATTERN.matcher(value).matches();
     }
 
     public static String guardarCuenta(String usuario, char[] passwordChars, String categoria, String riotId) {
         try {
             String errorSesion = validarSesion();
-            if (errorSesion != null) return errorSesion;
-            byte[] keyBytes    = SupabaseAuth.getMasterKey();
-            String usuarioEnc  = Encriptacion.encrypt(keyBytes, usuario);
+            if (errorSesion != null) {
+                return errorSesion;
+            }
+            byte[] keyBytes = SupabaseAuth.getMasterKey();
+            String usuarioEnc = Encriptacion.encrypt(keyBytes, usuario);
             String passwordEnc = Encriptacion.encrypt(keyBytes, passwordChars);
 
             JsonObject obj = new JsonObject();
-            obj.addProperty("user_id",   SupabaseAuth.getUserId());
-            obj.addProperty("usuario",   usuarioEnc);
-            obj.addProperty("password",  passwordEnc);
+            obj.addProperty("user_id", SupabaseAuth.getUserId());
+            obj.addProperty("usuario", usuarioEnc);
+            obj.addProperty("password", passwordEnc);
             obj.addProperty("categoria", categoria);
 
-            boolean tieneRiotId = categoria.equals("Riot account") && riotId != null && !riotId.isEmpty();
+            boolean tieneRiotId = "Riot account".equals(categoria) && riotId != null && !riotId.isEmpty();
             if (tieneRiotId) {
                 obj.addProperty("riot_id", riotId);
             } else {
                 obj.add("riot_id", com.google.gson.JsonNull.INSTANCE);
             }
 
-            HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(URL + "/cuentas"))
+                    .timeout(REQUEST_TIMEOUT)
                     .header("Content-Type", "application/json")
                     .header("apikey", ANON_KEY)
                     .header("Authorization", "Bearer " + SupabaseAuth.getAccessToken())
                     .POST(HttpRequest.BodyPublishers.ofString(obj.toString()))
                     .build();
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() == 201) return null;
-            return "Error al guardar: " + response.body();
-
+            HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 201) {
+                return null;
+            }
+            return "Error al guardar.";
         } catch (Exception e) {
             return "Error al guardar la cuenta.";
         } finally {
-            if (passwordChars != null) Arrays.fill(passwordChars, '\0');
+            if (passwordChars != null) {
+                Arrays.fill(passwordChars, '\0');
+            }
         }
     }
 
@@ -72,30 +90,32 @@ public class CuentaService {
         List<Cuenta> lista = new ArrayList<>();
         try {
             String errorSesion = validarSesion();
-            if (errorSesion != null) return lista;
+            if (errorSesion != null) {
+                return lista;
+            }
             byte[] keyBytes = SupabaseAuth.getMasterKey();
 
-            HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(URL + "/cuentas?select=id,categoria,usuario,password,riot_id"))
+                    .timeout(REQUEST_TIMEOUT)
                     .header("apikey", ANON_KEY)
                     .header("Authorization", "Bearer " + SupabaseAuth.getAccessToken())
                     .GET()
                     .build();
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
+            HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() == 200) {
                 String json = response.body();
-                if (json.equals("[]")) return lista;
+                if (json.equals("[]")) {
+                    return lista;
+                }
 
                 JsonArray array = JsonParser.parseString(json).getAsJsonArray();
                 for (JsonElement elemento : array) {
                     JsonObject registro = elemento.getAsJsonObject();
-
-                    String id          = registro.get("id").getAsString();
-                    String categoria   = registro.get("categoria").getAsString();
-                    String usuarioEnc  = registro.get("usuario").getAsString();
+                    String id = registro.get("id").getAsString();
+                    String categoria = registro.get("categoria").getAsString();
+                    String usuarioEnc = registro.get("usuario").getAsString();
                     String passwordEnc = registro.get("password").getAsString();
 
                     String riotId = null;
@@ -106,24 +126,21 @@ public class CuentaService {
 
                     String usuarioDec = Encriptacion.decrypt(keyBytes, usuarioEnc);
                     if (usuarioDec != null) {
-                        // Evitar exponer contraseña real en memoria/UI: solo máscara para listado.
                         lista.add(new Cuenta(categoria, usuarioDec, "********", riotId));
 
                         boolean legacyUsuario = !usuarioEnc.startsWith("v2:");
                         boolean legacyPassword = !passwordEnc.startsWith("v2:");
                         if (legacyUsuario || legacyPassword) {
                             String passwordDec = Encriptacion.decrypt(keyBytes, passwordEnc);
-                            if (passwordDec != null) {
+                            if (passwordDec != null && isUuid(id)) {
                                 migrarCuentaAV2(id, keyBytes, usuarioDec, passwordDec);
                             }
-                            passwordDec = null;
                         }
                     }
                 }
             }
-
         } catch (Exception e) {
-            System.out.println("Error obteniendo cuentas.");
+            return lista;
         }
         return lista;
     }
@@ -137,157 +154,157 @@ public class CuentaService {
             obj.addProperty("usuario", usuarioV2);
             obj.addProperty("password", passwordV2);
 
-            HttpClient client = HttpClient.newHttpClient();
+            String idEnc = URLEncoder.encode(cuentaId, StandardCharsets.UTF_8);
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(URL + "/cuentas?id=eq." + cuentaId))
+                    .uri(URI.create(URL + "/cuentas?id=eq." + idEnc))
+                    .timeout(REQUEST_TIMEOUT)
                     .header("apikey", ANON_KEY)
                     .header("Authorization", "Bearer " + SupabaseAuth.getAccessToken())
                     .header("Content-Type", "application/json")
                     .method("PATCH", HttpRequest.BodyPublishers.ofString(obj.toString()))
                     .build();
 
-            client.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (Exception ignored) {
-            // Si falla la migración transparente, no bloqueamos la lectura de cuentas.
+            CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (Exception e) {
         }
     }
 
     public static String obtenerPasswordDescifradaPorId(String cuentaId) {
+        if (!isUuid(cuentaId)) {
+            return null;
+        }
         try {
             String errorSesion = validarSesion();
-            if (errorSesion != null) return null;
+            if (errorSesion != null) {
+                return null;
+            }
             byte[] keyBytes = SupabaseAuth.getMasterKey();
-            HttpClient client = HttpClient.newHttpClient();
+            String cuentaIdEnc = URLEncoder.encode(cuentaId, StandardCharsets.UTF_8);
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(URL + "/cuentas?id=eq." + cuentaId + "&select=password"))
+                    .uri(URI.create(URL + "/cuentas?id=eq." + cuentaIdEnc + "&select=password"))
+                    .timeout(REQUEST_TIMEOUT)
                     .header("apikey", ANON_KEY)
                     .header("Authorization", "Bearer " + SupabaseAuth.getAccessToken())
                     .GET()
                     .build();
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() == 200) {
                 String json = response.body();
-                if (json.equals("[]")) return null;
+                if (json.equals("[]")) {
+                    return null;
+                }
                 JsonArray array = JsonParser.parseString(json).getAsJsonArray();
                 String passwordEnc = array.get(0).getAsJsonObject().get("password").getAsString();
                 return Encriptacion.decrypt(keyBytes, passwordEnc);
             }
         } catch (Exception e) {
-            System.out.println("Error obteniendo contraseña.");
+            return null;
         }
         return null;
     }
 
-    public static String getCuentaid(String usuario_buscar)
-    {
-        String cuentaid = "";
-        try{
+    public static String getCuentaId(String usuarioBuscar) {
+        String cuentaId = "";
+        try {
             String errorSesion = validarSesion();
-            if (errorSesion != null) return cuentaid;
+            if (errorSesion != null) {
+                return cuentaId;
+            }
             byte[] keyBytes = SupabaseAuth.getMasterKey();
-            HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(URL + "/cuentas?select=id,usuario"))
+                    .timeout(REQUEST_TIMEOUT)
                     .header("apikey", ANON_KEY)
                     .header("Authorization", "Bearer " + SupabaseAuth.getAccessToken())
                     .GET()
                     .build();
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() == 200) {
-                String json = response.body();
-                JsonArray array = JsonParser.parseString(json).getAsJsonArray();
+                JsonArray array = JsonParser.parseString(response.body()).getAsJsonArray();
                 for (JsonElement elemento : array) {
                     JsonObject registro = elemento.getAsJsonObject();
-
-                    String usuarioEnc  = registro.get("usuario").getAsString();
-                    String usuarioDec  = Encriptacion.decrypt(keyBytes, usuarioEnc);
-                    if (usuarioDec != null && usuarioDec.equals(usuario_buscar))
-                    {
-                        cuentaid   = registro.get("id").getAsString();
+                    String usuarioEnc = registro.get("usuario").getAsString();
+                    String usuarioDec = Encriptacion.decrypt(keyBytes, usuarioEnc);
+                    if (usuarioDec != null && usuarioDec.equals(usuarioBuscar)) {
+                        String foundId = registro.get("id").getAsString();
+                        if (isUuid(foundId)) {
+                            cuentaId = foundId;
+                        }
                         break;
                     }
                 }
             }
+        } catch (Exception e) {
+            return cuentaId;
         }
-        catch(Exception e){
-            System.out.println("Error buscando cuenta.");
-        }
-        return cuentaid;
+        return cuentaId;
     }
 
-    public static void eliminarCuenta(String cuenta_id) {
+    public static String getCuentaid(String usuarioBuscar) {
+        return getCuentaId(usuarioBuscar);
+    }
+
+    public static void eliminarCuenta(String cuentaId) {
+        if (!isUuid(cuentaId)) {
+            return;
+        }
         try {
             String errorSesion = validarSesion();
-            if (errorSesion != null) return;
-            HttpClient client = HttpClient.newHttpClient();
+            if (errorSesion != null) {
+                return;
+            }
 
+            String cuentaIdEnc = URLEncoder.encode(cuentaId, StandardCharsets.UTF_8);
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(URL + "/cuentas?id=eq." + cuenta_id))
+                    .uri(URI.create(URL + "/cuentas?id=eq." + cuentaIdEnc))
+                    .timeout(REQUEST_TIMEOUT)
                     .header("apikey", ANON_KEY)
                     .header("Authorization", "Bearer " + SupabaseAuth.getAccessToken())
                     .DELETE()
                     .build();
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                System.out.println("Cuenta eliminada correctamente.");
-            } else {
-                System.out.println("No se pudo eliminar la cuenta.");
-            }
-
+            CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
         } catch (Exception e) {
-            System.out.println("Error eliminando cuenta.");
         }
     }
 
-    /**
-     * Actualiza usuario, password y opcionalmente riot_id de una cuenta.
-     *
-     * @param cuenta_id            ID de la cuenta a actualizar.
-     * @param nuevo_usuario        Nuevo nombre de usuario (en claro, se cifrará).
-     * @param nuevo_password_chars Nueva contraseña como char[] (se cifrará y limpiará).
-     * @param nuevo_riot_id        Nuevo Riot ID si es Riot account, o null para no modificarlo.
-     */
-    public static void actualizarCuenta(String cuenta_id, String nuevo_usuario, char[] nuevo_password_chars, String nuevo_riot_id) {
+    public static void actualizarCuenta(String cuentaId, String nuevoUsuario, char[] nuevoPasswordChars, String nuevoRiotId) {
+        if (!isUuid(cuentaId)) {
+            return;
+        }
         try {
             String errorSesion = validarSesion();
-            if (errorSesion != null) return;
+            if (errorSesion != null) {
+                return;
+            }
             byte[] keyBytes = SupabaseAuth.getMasterKey();
-            String nuevo_usuario_enc  = Encriptacion.encrypt(keyBytes, nuevo_usuario);
-            String nuevo_password_enc = Encriptacion.encrypt(keyBytes, nuevo_password_chars);
+            String nuevoUsuarioEnc = Encriptacion.encrypt(keyBytes, nuevoUsuario);
+            String nuevoPasswordEnc = Encriptacion.encrypt(keyBytes, nuevoPasswordChars);
 
             JsonObject obj = new JsonObject();
-            obj.addProperty("usuario",  nuevo_usuario_enc);
-            obj.addProperty("password", nuevo_password_enc);
-
-            // Solo incluimos riot_id en el PATCH si se proporcionó un valor
-            if (nuevo_riot_id != null) {
-                obj.addProperty("riot_id", nuevo_riot_id);
+            obj.addProperty("usuario", nuevoUsuarioEnc);
+            obj.addProperty("password", nuevoPasswordEnc);
+            if (nuevoRiotId != null) {
+                obj.addProperty("riot_id", nuevoRiotId);
             }
 
-            HttpClient client = HttpClient.newHttpClient();
+            String cuentaIdEnc = URLEncoder.encode(cuentaId, StandardCharsets.UTF_8);
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(URL + "/cuentas?id=eq." + cuenta_id))
+                    .uri(URI.create(URL + "/cuentas?id=eq." + cuentaIdEnc))
+                    .timeout(REQUEST_TIMEOUT)
                     .header("apikey", ANON_KEY)
                     .header("Authorization", "Bearer " + SupabaseAuth.getAccessToken())
                     .header("Content-Type", "application/json")
                     .method("PATCH", HttpRequest.BodyPublishers.ofString(obj.toString()))
                     .build();
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                System.out.println("Cuenta actualizada con éxito.");
-            } else {
-                System.out.println("No se pudo actualizar la cuenta.");
-            }
-
+            CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
         } catch (Exception e) {
-            System.out.println("Error actualizando cuenta.");
         } finally {
-            if (nuevo_password_chars != null) Arrays.fill(nuevo_password_chars, '\0');
+            if (nuevoPasswordChars != null) {
+                Arrays.fill(nuevoPasswordChars, '\0');
+            }
         }
     }
 }

@@ -2,10 +2,6 @@ package com.mycompany.gestorcontrasenyas.utils;
 
 import java.util.Arrays;
 
-/**
- * Estado de una sesión autenticada.
- * Contiene datos sensibles y permite su limpieza explícita.
- */
 public class Sesion {
 
     private final String userId;
@@ -49,7 +45,7 @@ public class Sesion {
     }
 
     public synchronized byte[] getMasterKey() {
-        return masterKey;
+        return masterKey != null ? Arrays.copyOf(masterKey, masterKey.length) : null;
     }
 
     public synchronized void limpiarMasterKey() {
