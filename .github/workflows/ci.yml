@@ -82,7 +82,7 @@ jobs:
   dependency-check:
     name: OWASP Dependency Check
     runs-on: ubuntu-latest
-    timeout-minutes: 30   # ← aumentado: con API key tarda ~5 min, sin ella puede necesitar más
+    timeout-minutes: 60   # ← aumentado: la descarga inicial de NVD puede superar 30 min
     if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
 
     steps:
@@ -105,21 +105,27 @@ jobs:
           henrik.api_key=fake
           EOF
 
-      # Cachea la BD de NVD entre ejecuciones para no descargarla entera cada vez
+      # CORRECCIÓN: la clave usa hashFiles(pom.xml) en lugar de run_id
+      # para que la caché se reutilice entre ejecuciones del mismo proyecto.
+      # Con run_id la caché nunca se restauraba (nueva key en cada run).
       - name: Cache base de datos NVD
         uses: actions/cache@v4
         with:
           path: ~/.m2/repository/org/owasp/dependency-check-data
-          key: nvd-${{ runner.os }}-${{ github.run_id }}
+          key: nvd-${{ runner.os }}-${{ hashFiles('pom.xml') }}
           restore-keys: |
             nvd-${{ runner.os }}-
 
+      # CORRECCIÓN: añadidos nvd.api.delay y nvd.api.resultsPerPage para
+      # respetar los límites de la API de NVD y evitar cancelaciones por timeout.
       - name: OWASP Dependency Check
         run: |
           mvn org.owasp:dependency-check-maven:check \
             -DfailBuildOnCVSS=9 \
             -DassemblyAnalyzerEnabled=false \
             -Dnvd.api.key=${{ secrets.NVD_API_KEY }} \
+            -Dnvd.api.delay=6000 \
+            -Dnvd.api.resultsPerPage=2000 \
             --no-transfer-progress || true
 
       - name: Subir informe OWASP
