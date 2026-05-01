@@ -5,7 +5,6 @@ on:
     branches: [ "main", "develop", "feature/**" ]
   pull_request:
     branches: [ "main", "develop" ]
-  # Permite lanzar el workflow manualmente desde la UI de GitHub
   workflow_dispatch:
 
 jobs:
@@ -28,7 +27,6 @@ jobs:
           distribution: "temurin"
           cache: maven
 
-      # Config mínima para que Config.java no llame a System.exit(1)
       - name: Crear config.properties de prueba
         run: |
           cat > config.properties <<'EOF'
@@ -84,8 +82,7 @@ jobs:
   dependency-check:
     name: OWASP Dependency Check
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    # Solo en push/PR a main para no ralentizar feature branches
+    timeout-minutes: 30   # ← aumentado: con API key tarda ~5 min, sin ella puede necesitar más
     if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
 
     steps:
@@ -108,11 +105,21 @@ jobs:
           henrik.api_key=fake
           EOF
 
+      # Cachea la BD de NVD entre ejecuciones para no descargarla entera cada vez
+      - name: Cache base de datos NVD
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: nvd-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            nvd-${{ runner.os }}-
+
       - name: OWASP Dependency Check
         run: |
           mvn org.owasp:dependency-check-maven:check \
             -DfailBuildOnCVSS=9 \
             -DassemblyAnalyzerEnabled=false \
+            -Dnvd.api.key=${{ secrets.NVD_API_KEY }} \
             --no-transfer-progress || true
 
       - name: Subir informe OWASP
